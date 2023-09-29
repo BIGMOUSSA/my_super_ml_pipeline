@@ -1,0 +1,62 @@
+name: Clean Dataset
+
+on:
+  push:
+    branches:
+      - master  
+
+jobs:
+  clean:
+    name: Clean Dataset
+    runs-on: ubuntu-latest  
+
+    steps:
+      - name: Update packages
+        run: sudo apt-get update && sudo apt-get upgrade -y
+
+      - name: Install SSH key
+        run: |
+          install -m 600 -D /dev/null ~/.ssh/id_rsa
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.10.9  
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+        
+      - name: create output folder
+        run: mkdir -p output
+
+      - name: Use Node.js 16
+        uses: actions/setup-node@v2
+        with:
+          node-version: '16'  # Explicitly specify Node.js 16
+
+      - name: Run pytest
+        run: pytest unit_test.py
+        
+      - name: Run cleanData
+        run: python src/process.py  # Replace 'path/to/clean.py' with the actual path to your clean.py script
+
+      - name: Run training
+        run: python src/train.py  # Replace 'path/to/clean.py' with the actual path to your clean.py script
+
+      - name: Mv zipped file to output
+        run: mv *.zip output
+
+      - name: Mv result file to output
+        run: mv results.txt output
+
+      - name: Mv final model file to output
+        run: mv *.joblib output
+
+      - uses: actions/upload-artifact@v3
+        with:
+          name: data_output
+          path: output
